@@ -1,5 +1,5 @@
 // Unicorn Duel service worker: app shell cache-first, Google Fonts stale-while-revalidate.
-const VERSION = "unicornduel-v1";
+const VERSION = "unicornduel-v2";
 const SHELL = ["./", "index.html", "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png", "icons/icon-maskable-512.png", "icons/apple-touch-icon.png"];
 
 self.addEventListener("install", e => {

@@ -395,17 +395,37 @@ function cricket() {
 }
 // The crowd cheers a human's star; the bot's star is met with polite silence.
 const crowdFor = (human, big) => human ? cheer(big) : cricket();
-// A friendly narrator reads the calls in the browser's own English voice.
+// A fairy narrator reads the calls in the browser's own English voice, pitched up, with a harp
+// glissando and a shimmer of bells under every line.
 let enVoice = null;
-function pickVoice() { try { const v = speechSynthesis.getVoices(); enVoice = v.find(x => /^en(-|_)GB/i.test(x.lang) && /female|libby|sonia|kate|serena/i.test(x.name)) || v.find(x => /^en(-|_)(US|GB)/i.test(x.lang)) || v.find(x => /^en/i.test(x.lang)) || null; } catch (e) {} }
+const FAIRY = /libby|sonia|maisie|aria|jenny|ana|samantha|karen|moira|tessa|serena|kate|fiona|victoria|zira|google uk english female|google us english|female/i;
+function pickVoice() { try { const v = speechSynthesis.getVoices().filter(x => /^en/i.test(x.lang)); enVoice = v.find(x => FAIRY.test(x.name) && /^en(-|_)GB/i.test(x.lang)) || v.find(x => FAIRY.test(x.name)) || v.find(x => /^en(-|_)(GB|US)/i.test(x.lang)) || v[0] || null; } catch (e) {} }
+function fairyChime(len) {
+  if (!AC || muted || G.demo) return;
+  // a quick harp run up a pentatonic scale
+  const run = [1046, 1175, 1318, 1568, 1760, 2093, 2349, 2637, 3136, 3520];
+  run.forEach((n, i) => tone(n, .5, "sine", .035, 0, i * .028));
+  // then a soft bell shimmer that twinkles under the voice
+  const t0 = AC.currentTime + .25, dur = .6 + (len || 1) * .9;
+  for (const [f, d] of [[2093, 0], [2637, 4], [3136, -3]]) {
+    const o = AC.createOscillator(), g = AC.createGain(), lfo = AC.createOscillator(), lg = AC.createGain();
+    o.type = "sine"; o.frequency.value = f; o.detune.value = d;
+    g.gain.setValueAtTime(.0001, t0); g.gain.exponentialRampToValueAtTime(.012, t0 + .15); g.gain.exponentialRampToValueAtTime(.0001, t0 + dur);
+    lfo.frequency.value = 6 + Math.random() * 3; lg.gain.value = .008;
+    lfo.connect(lg).connect(g.gain); o.connect(g).connect(AC.destination);
+    o.start(t0); o.stop(t0 + dur); lfo.start(t0); lfo.stop(t0 + dur);
+  }
+  for (let i = 0; i < 6; i++) tone(2637 + Math.random() * 2000, .25, "sine", .015, 0, .3 + Math.random() * dur);
+}
 try { pickVoice(); speechSynthesis.addEventListener("voiceschanged", pickVoice); } catch (e) {}
 function say(text, queue) {
   if (muted || G.demo || !("speechSynthesis" in window)) return;
   try {
     if (!queue) speechSynthesis.cancel();
+    fairyChime(text.length / 14);
     const u = new SpeechSynthesisUtterance(text);
-    u.lang = enVoice ? enVoice.lang : "en-GB"; if (enVoice) u.voice = enVoice; u.rate = 1.0; u.pitch = 1.35; u.volume = .9;
-    speechSynthesis.speak(u);
+    u.lang = enVoice ? enVoice.lang : "en-GB"; if (enVoice) u.voice = enVoice; u.rate = .9; u.pitch = 1.75; u.volume = .95;
+    setTimeout(() => { try { speechSynthesis.speak(u); } catch (e) {} }, queue ? 0 : 160);
   } catch (e) {}
 }
 
@@ -459,6 +479,7 @@ function spawnBolt(f, kind, x, y) {
 function doJump(f) {
   if (!onGround(f) || G.t < f.sleepUntil) return;
   f.vy = JUMP_V; f.y = .001; sfx.jump();
+  burst(f.x, .1, [...f.def.mane, "#ffffff"], 14, 2.2, "star");
 }
 function doBubble(f) {
   if (G.t < f.bubbleCd || G.t < f.sleepUntil) return;
@@ -491,6 +512,9 @@ function burst(x, y, cols, n, sp, shape) {
     G.parts.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: .5 + Math.random() * .5, max: 1, col, size: 3 + Math.random() * 4, shape: shape || "dot", g: shape === "confetti" ? -4 : 0, rot: Math.random() * 6 });
   }
 }
+function glitterRain(n) {
+  for (let i = 0; i < n; i++) G.parts.push({ x: rnd(-WALL - 1, WALL + 1), y: rnd(3.5, 6.5), vx: rnd(-.3, .3), vy: rnd(-2.2, -1), life: 1.6 + Math.random(), max: 2, col: GLIT[i % 6], size: 3 + Math.random() * 3, shape: "star", g: 0, rot: Math.random() * 6 });
+}
 function floatText(x, y, txt, col) { G.texts.push({ x, y, txt, col: col || "#4a2c6e", t: 0 }); }
 const nearBody = (b, o, R) => (b.x - o.x) ** 2 + (b.y - (o.y + .9)) ** 2 < R * R;
 function hits(b, o) {
@@ -517,7 +541,9 @@ function score(s, victim) {
   if (onGround(victim)) { victim.vy = 4; victim.y = .001; }
   victim.volley = null; victim.stomp = false; victim.bubble = null;
   f.magic = Math.min(1, f.magic + .1); victim.magic = Math.min(1, victim.magic + .15);
-  burst(victim.x, victim.y + 1, RAINBOW, 34, 4, "star");
+  burst(victim.x, victim.y + 1, RAINBOW, 60, 4.5, "star");
+  burst(f.x, f.y + 1.9, ["#ffffff", "#fff3a6", f.def.spark], 24, 3, "star");
+  glitterRain(50);
   burst(victim.x, victim.y + 1.3, ["#ff8fc7", "#ffd1e8"], 10, 2.5, "heart");
   sfx.giggle();
   for (const b of G.bolts) if (!b.done) { b.done = true; burst(b.x, b.y, ["#ffffff", b.col], 6, 1.5, "star"); }
@@ -527,8 +553,8 @@ function score(s, victim) {
   crowdFor(f.human, final);
   if (final) { gameOver(s); return; }
   G.state = "cheer"; G.cheerT = 1.7;
-  G.banner = { big: "Sparkled!", small: `A star for ${N(s)}`, col: SIDE[s].col, until: G.t + 1.6 };
-  say(`Sparkled! A star for ${N(s)}!`);
+  G.banner = { big: "Sparkled!", small: `A magic star for ${N(s)}`, col: SIDE[s].col, until: G.t + 1.6 };
+  say(`${["Sparkle-tastic!", "Twinkle twinkle!", "Sparkly sparkle!", "Magical!"][Math.floor(Math.random() * 4)]} A magic star for ${N(s)}!`);
 }
 
 function updBolts(dt) {
@@ -554,7 +580,7 @@ function updBolts(dt) {
     }
     b.x += b.vx * dt;
     if (Math.abs(b.x) > WALL + 1.5) { b.done = true; continue; }
-    if (Math.random() < dt * 30) G.parts.push({ x: b.x - Math.sign(b.vx) * b.r, y: b.y + rnd(-.08, .08), vx: -b.vx * .15, vy: rnd(-.3, .3), life: .35, max: .35, col: b.kind === "wave" ? "#9be37f" : b.col, size: 2 + Math.random() * 2, shape: "dot", g: 0 });
+    if (Math.random() < dt * 80) G.parts.push({ x: b.x - Math.sign(b.vx) * b.r * rnd(.5, 1.5), y: b.y + rnd(-.12, .12), vx: -b.vx * .15, vy: rnd(-.4, .4), life: .55, max: .55, col: Math.random() < .4 ? "#ffffff" : Math.random() < .5 ? (b.kind === "wave" ? "#9be37f" : b.col) : RAINBOW[Math.floor(Math.random() * 6)], size: 2 + Math.random() * 2.5, shape: Math.random() < .6 ? "star" : "dot", g: -.4, rot: Math.random() * 6 });
     // shields first
     if (G.t < o.globeUntil && nearBody(b, o, 1.15)) { bounceBack(b, o); continue; }
     if (o.bubble && nearBody(b, o, 1.02)) {
@@ -647,7 +673,7 @@ function physics(f, dt, live) {
   if (f.y > 0 || f.vy > 0) {
     f.vy -= GRAV * dt; f.y += f.vy * dt;
     if (f.y <= 0) {
-      if (f.vy < -3) { f.squash = 1; sfx.land(); }
+      if (f.vy < -3) { f.squash = 1; sfx.land(); burst(f.x, .05, ["#ffffff", "#fff3a6", ...f.def.mane], 12, 2, "star"); }
       f.y = 0; f.vy = 0;
       if (f.stomp) {
         f.stomp = false; sfx.stomp(); G.flash = .4;
@@ -657,6 +683,8 @@ function physics(f, dt, live) {
     }
   }
   f.squash = Math.max(0, f.squash - dt * 6);
+  const glitRate = (onGround(f) ? Math.min(1, Math.abs(f.vx) / 2) * 30 : 40) + 3;
+  if (Math.random() < dt * glitRate) G.parts.push({ x: f.x - f.face * rnd(.3, .9), y: f.y + rnd(.1, 1.3), vx: -f.vx * .2 + rnd(-.3, .3), vy: rnd(-.2, .6), life: .7, max: .7, col: Math.random() < .5 ? f.def.mane[Math.floor(Math.random() * 3)] : GLIT[Math.floor(Math.random() * 6)], size: 2 + Math.random() * 3, shape: "star", g: -.6, rot: Math.random() * 6 });
   f.run += dt * Math.abs(f.vx) * 4.4;
   if (Math.abs(o.x - f.x) > .2 && G.t >= f.giggleUntil) f.face = Math.sign(o.x - f.x);
   if (f.bubble) { f.bubble.t += dt; if (f.bubble.t > .55) f.bubble = null; }
@@ -688,16 +716,17 @@ function timeUp() {
   if (G.score[0] !== G.score[1]) { gameOver(G.score[0] > G.score[1] ? 0 : 1); return; }
   G.golden = true; sfx.bell();
   G.banner = { big: "Golden star!", small: "The next sparkle wins", col: "#e0a100", until: G.t + 2.2 };
-  say("Golden star! The next sparkle wins!");
+  say("A golden star! The next sparkle wins!");
 }
 function gameOver(w) {
   G.state = "over"; G.winner = w; G.overT = 0;
   const f = G.P[w], o = G.P[1 - w];
   for (let i = 0; i < 4; i++) burst(rnd(-4, 4), rnd(2.5, 4.5), RAINBOW, 20, 3, "confetti");
+  glitterRain(90);
   G.banner = { big: `${N(w)} wins!`, small: "", col: SIDE[w].col, until: G.t + 2.2 };
   if (!G.demo) {
     sfx.fanfare();
-    say(`${N(w)} wins! Well done!`);
+    say(`Hooray! ${N(w)} wins! What a magical duel!`);
     setTimeout(() => {
       if (G.state !== "over" || G.demo) return;
       const two = settings.mode === "2p";
@@ -817,6 +846,7 @@ function step(dt) {
   } else if (G.state === "over") {
     G.overT += dt;
     if (Math.random() < dt * 6) burst(rnd(-5, 5), rnd(3, 5), RAINBOW, 6, 2, "confetti");
+    if (Math.random() < dt * 4) glitterRain(6);
     if (G.demo && G.overT > 3.5) startGame(true);
   }
   const live = G.state === "play";
@@ -842,8 +872,10 @@ const DISPLAY = "Fredoka, 'Baloo 2', 'Arial Rounded MT Bold', 'Trebuchet MS', sa
 const BODYF = "Nunito, 'Trebuchet MS', sans-serif";
 const sx = wx => VW / 2 + wx * S;
 const sy = wy => FLOOR - wy * S;
-const CLOUDS = [], FLOWERS = [], TUFTS = [];
+const CLOUDS = [], FLOWERS = [], TUFTS = [], GLITTER = [];
+const GLIT = ["#ffffff", "#ffd43b", "#ff7eb6", "#9775fa", "#4dc3ff", "#ff9f43"];
 (() => {
+  for (let i = 0; i < 130; i++) GLITTER.push({ x: Math.random(), y: Math.random(), ph: Math.random() * 7, sp: 1.5 + Math.random() * 3, s: 3 + Math.random() * 5.5, c: GLIT[i % GLIT.length], v: 4 + Math.random() * 10 });
   for (let i = 0; i < 7; i++) CLOUDS.push({ x: Math.random(), y: 60 + Math.random() * 170, s: .6 + Math.random() * .7, v: 4 + Math.random() * 7 });
   const fc = ["#ff7eb6", "#ffffff", "#ffd43b", "#b197fc", "#ff922b", "#74c0fc"];
   for (let i = 0; i < 46; i++) FLOWERS.push({ x: Math.random(), y: Math.random(), c: fc[i % fc.length], s: .7 + Math.random() * .6 });
@@ -854,6 +886,21 @@ function cloud(c, x, y, s) {
   c.beginPath();
   c.arc(x, y, 28 * s, 0, 7); c.arc(x + 32 * s, y - 14 * s, 36 * s, 0, 7); c.arc(x + 70 * s, y, 30 * s, 0, 7); c.arc(x + 36 * s, y + 10 * s, 30 * s, 0, 7);
   c.fill();
+}
+function drawGlitter() {
+  // glitter drifting up through the air, each speck twinkling on its own beat
+  ctx.save();
+  for (const g of GLITTER) {
+    const tw = Math.max(0, Math.sin(G.t * g.sp + g.ph));
+    if (tw < .05) continue;
+    const x = g.x * VW + Math.sin(G.t * .5 + g.ph) * 12, y = ((g.y * (FLOOR + 40) - G.t * g.v) % (FLOOR + 40) + FLOOR + 40) % (FLOOR + 40);
+    const r = g.s * (.6 + tw * .8);
+    ctx.globalAlpha = tw * .95; ctx.fillStyle = g.c;
+    star4(ctx, x, y, r, G.t * .5 + g.ph); ctx.fill();
+    if (g.c === "#ffffff") { ctx.strokeStyle = "rgba(224,161,0,.55)"; ctx.lineWidth = 1; ctx.stroke(); }
+    else { ctx.fillStyle = "#ffffff"; star4(ctx, x, y, r * .45, G.t * .5 + g.ph); ctx.fill(); }
+  }
+  ctx.restore();
 }
 function drawBackground() {
   const g = ctx.createLinearGradient(0, 0, 0, FLOOR);
@@ -1035,6 +1082,17 @@ function drawUni(f) {
     const g = ctx.createRadialGradient(tipX, tipY, 2, tipX, tipY, 30 + glow * 20); g.addColorStop(0, rgba(d.spark, .9 * glow)); g.addColorStop(1, rgba(d.spark, 0));
     ctx.fillStyle = g; ctx.beginPath(); ctx.arc(tipX, tipY, 50, 0, 7); ctx.fill(); ctx.restore();
   }
+  // the horn always twinkles a little, and so does the mane
+  ctx.save();
+  const tw = .5 + .5 * Math.sin(G.t * 5 + f.side * 2);
+  ctx.globalAlpha = .6 + tw * .4; ctx.fillStyle = "#ffe066"; star4(ctx, tipX, tipY, 8 + tw * 8, G.t); ctx.fill();
+  ctx.fillStyle = "#ffffff"; star4(ctx, tipX, tipY, 4 + tw * 4, G.t); ctx.fill();
+  for (let k = 0; k < 3; k++) {
+    const ph = Math.sin(G.t * 3.3 + k * 2.1 + f.side); if (ph < .6) continue;
+    const mx = sx(f.x + f.face * (.55 - k * .17)), my = sy(f.y + 1.6 - k * .2);
+    ctx.globalAlpha = (ph - .6) * 2.5; ctx.fillStyle = GLIT[(k + f.side) % 6]; star4(ctx, mx, my, 7, G.t * 2); ctx.fill();
+  }
+  ctx.restore();
   if (G.t < f.sleepUntil) {
     ctx.fillStyle = "#7d5cff"; ctx.textAlign = "center";
     for (let k = 0; k < 3; k++) { const ph = (G.t * .8 + k / 3) % 1; ctx.globalAlpha = 1 - ph; ctx.font = `700 ${16 + k * 6}px ${DISPLAY}`; ctx.fillText("z", X + f.face * (20 + ph * 30), Y - 1.9 * S - ph * 40); }
@@ -1199,6 +1257,7 @@ function render() {
   ctx.fillStyle = "#a9dcff"; ctx.fillRect(0, 0, cv.width, cv.height);
   ctx.setTransform(dpr * kS, 0, 0, dpr * kS, 0, dpr * offY);
   drawBackground();
+  drawGlitter();
   drawFx();
   for (const f of G.P) {
     const sh = Math.max(.35, 1 - f.y * .35);
@@ -1211,7 +1270,7 @@ function render() {
   for (const q of G.parts) {
     const a = Math.min(1, q.life / q.max * 1.5), x = sx(q.x), y = sy(q.y);
     ctx.globalAlpha = a; ctx.fillStyle = q.col;
-    if (q.shape === "star") { star4(ctx, x, y, q.size * 1.6, q.rot); ctx.fill(); }
+    if (q.shape === "star") { ctx.globalAlpha = a * (.55 + .45 * Math.sin(q.life * 28 + q.rot)); star4(ctx, x, y, q.size * 1.6, q.rot); ctx.fill(); }
     else if (q.shape === "heart") { heartPath(ctx, x, y, q.size); ctx.fill(); }
     else if (q.shape === "confetti") { ctx.save(); ctx.translate(x, y); ctx.rotate(q.rot); ctx.fillRect(-q.size, -q.size * .4, q.size * 2, q.size * .8); ctx.restore(); }
     else { ctx.beginPath(); ctx.arc(x, y, q.size * .7, 0, 7); ctx.fill(); }

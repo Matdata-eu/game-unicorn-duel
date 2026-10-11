@@ -32,7 +32,7 @@ The rainbow bar under each name fills slowly during the duel, faster with every 
 | Bubble (Expert) | A short bubble that blocks one sparkle. Popped just as the sparkle arrives, it bounces the sparkle back. |
 | Magic | Your unicorn's own magic move, once the rainbow bar is full. |
 
-Two sparkles that meet in the air turn into hearts. When time runs out the unicorn with the most stars wins; if it's a tie, it's a golden star and the next sparkle wins. A friendly voice calls "Ready, set, sparkle!" and every star, using your browser's built-in speech when available.
+Two sparkles that meet in the air turn into hearts. When time runs out the unicorn with the most stars wins; if it's a tie, it's a golden star and the next sparkle wins. A fairy narrator calls "Ready, set, sparkle!" and every star with a harp run and twinkling bells, using your browser's built-in speech (pitched up) when available. Glitter drifts through the air, and the unicorns sprinkle it as they run and jump.
 
 ## Install
 Open the game in Chrome, Edge or Safari and choose "Install" or "Add to Home Screen". After the first load it works offline.
