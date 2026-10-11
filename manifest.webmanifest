@@ -1,0 +1,17 @@
+{
+  "name": "Unicorn Duel",
+  "short_name": "Unicorn Duel",
+  "description": "A gentle sparkle duel between two unicorns: hop over sparkles, send your own and use your unicorn's magic. Play a friend on the same device or a bot on Easy, Medium or Hard.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#ffd6ec",
+  "theme_color": "#ffd6ec",
+  "categories": ["games", "kids"],
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
