@@ -32,7 +32,7 @@ The rainbow bar under each name fills slowly during the duel, faster with every 
 | Bubble (Expert) | A short bubble that blocks one sparkle. Popped just as the sparkle arrives, it bounces the sparkle back. |
 | Magic | Your unicorn's own magic move, once the rainbow bar is full. |
 
-Two sparkles that meet in the air turn into hearts. When time runs out the unicorn with the most stars wins; if it's a tie, it's a golden star and the next sparkle wins. A fairy narrator calls "Ready, set, sparkle!", every star, every magic move and the winner, with a harp run and twinkling bells. Glitter drifts through the air, and the unicorns sprinkle it as they run and jump.
+Two sparkles that meet in the air turn into hearts. When time runs out the unicorn with the most stars wins; if it's a tie, it's a golden star and the next sparkle wins. A friendly voice calls "Ready, set, sparkle!" at the start and names the winner, using your browser's built-in speech when available. Glitter drifts through the air, and the unicorns sprinkle it as they run and jump.
 
 ## Install
 Open the game in Chrome, Edge or Safari and choose "Install" or "Add to Home Screen". After the first load it works offline.
@@ -44,14 +44,13 @@ No build step. Serve the folder over `localhost` or HTTPS, for example:
 python3 -m http.server 8000
 ```
 
-Files: `index.html` (the whole game), `voice/` (narrator clips), `manifest.webmanifest`, `sw.js` (offline cache), `icons/`. Pushes to `main` deploy to GitHub Pages through `.github/workflows/pages.yml`.
+Files: `index.html` (the whole game), `manifest.webmanifest`, `sw.js` (offline cache), `icons/`. Pushes to `main` deploy to GitHub Pages through `.github/workflows/pages.yml`.
 
 ## Support
 Found a bug or have an idea? [Open an issue](https://github.com/Matdata-eu/game-unicorn-duel/issues).
 
 ## Credits
-- Game, unicorns, graphics and sound effects: made from scratch in code (canvas drawing, Web Audio).
-- Fairy narrator: recorded with the [Kokoro](https://huggingface.co/hexgrad/Kokoro-82M) text-to-speech model (Apache 2.0) using its `af_heart` voice, then pitched up and given chorus, shimmer and echo with FFmpeg. The clips are in `voice/`.
+- Game, unicorns, graphics and sound effects: made from scratch in code (canvas drawing, Web Audio), no third-party assets. The narrator's voice is your browser's built-in speech when available.
 - Fonts: [Fredoka](https://fonts.google.com/specimen/Fredoka) by Milena Brandão and Hafontia, and [Nunito](https://fonts.google.com/specimen/Nunito) by Vernon Adams and contributors, both under the SIL Open Font License, loaded from Google Fonts.
 - Built by [Matdata](https://matdata.eu) with [Claude Code](https://claude.com/claude-code).
 

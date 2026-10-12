@@ -283,7 +283,6 @@ try { muted = localStorage.getItem("unicornduel.muted") === "1"; } catch (e) {}
 function initAudio() {
   if (!AC) { try { AC = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { AC = null; } }
   if (AC && AC.state === "suspended") AC.resume().catch(() => {});
-  loadVoices();
 }
 function tone(freq, dur, type, vol, slide, delay) {
   if (!AC || muted || G.demo) return;
@@ -396,60 +395,17 @@ function cricket() {
 }
 // The crowd cheers a human's star; the bot's star is met with polite silence.
 const crowdFor = (human, big) => human ? cheer(big) : cricket();
-// A fairy narrator reads the calls in the browser's own English voice, pitched up, with a harp
-// glissando and a shimmer of bells under every line.
+// A friendly narrator reads the calls in the browser's own English voice.
 let enVoice = null;
-const FAIRY = /libby|sonia|maisie|aria|jenny|ana|samantha|karen|moira|tessa|serena|kate|fiona|victoria|zira|google uk english female|google us english|female/i;
-function pickVoice() { try { const v = speechSynthesis.getVoices().filter(x => /^en/i.test(x.lang)); enVoice = v.find(x => FAIRY.test(x.name) && /^en(-|_)GB/i.test(x.lang)) || v.find(x => FAIRY.test(x.name)) || v.find(x => /^en(-|_)(GB|US)/i.test(x.lang)) || v[0] || null; } catch (e) {} }
-function fairyChime(len) {
-  if (!AC || muted || G.demo) return;
-  // a quick harp run up a pentatonic scale
-  const run = [1046, 1175, 1318, 1568, 1760, 2093, 2349, 2637, 3136, 3520];
-  run.forEach((n, i) => tone(n, .5, "sine", .035, 0, i * .028));
-  // then a soft bell shimmer that twinkles under the voice
-  const t0 = AC.currentTime + .25, dur = .6 + (len || 1) * .9;
-  for (const [f, d] of [[2093, 0], [2637, 4], [3136, -3]]) {
-    const o = AC.createOscillator(), g = AC.createGain(), lfo = AC.createOscillator(), lg = AC.createGain();
-    o.type = "sine"; o.frequency.value = f; o.detune.value = d;
-    g.gain.setValueAtTime(.0001, t0); g.gain.exponentialRampToValueAtTime(.012, t0 + .15); g.gain.exponentialRampToValueAtTime(.0001, t0 + dur);
-    lfo.frequency.value = 6 + Math.random() * 3; lg.gain.value = .008;
-    lfo.connect(lg).connect(g.gain); o.connect(g).connect(AC.destination);
-    o.start(t0); o.stop(t0 + dur); lfo.start(t0); lfo.stop(t0 + dur);
-  }
-  for (let i = 0; i < 6; i++) tone(2637 + Math.random() * 2000, .25, "sine", .015, 0, .3 + Math.random() * dur);
-}
+function pickVoice() { try { const v = speechSynthesis.getVoices(); enVoice = v.find(x => /^en(-|_)GB/i.test(x.lang) && /female|libby|sonia|kate|serena/i.test(x.name)) || v.find(x => /^en(-|_)(US|GB)/i.test(x.lang)) || v.find(x => /^en/i.test(x.lang)) || null; } catch (e) {} }
 try { pickVoice(); speechSynthesis.addEventListener("voiceschanged", pickVoice); } catch (e) {}
-// Recorded fairy voice: clips in voice/, made with the Kokoro voice "af_heart" and pitched up with
-// chorus, an octave-up shimmer and a sparkly echo. The browser voice is only a fallback.
-const VOICE_KEYS = ["ready", "set", "go", "c0", "c1", "c2", "c3", "golden",
-  ...UNI_ORDER.map(k => "star-" + k), ...UNI_ORDER.map(k => "win-" + k), ...Object.values(UNI).map(u => "sup-" + u.super)];
-const voiceBufs = {}; let voiceLoading = false, voiceSrcs = [];
-function loadVoices() {
-  if (voiceLoading || !AC) return; voiceLoading = true;
-  for (const k of VOICE_KEYS) fetch(`voice/${k}.mp3`).then(r => r.ok ? r.arrayBuffer() : Promise.reject()).then(a => new Promise((ok, no) => AC.decodeAudioData(a, ok, no))).then(b => { voiceBufs[k] = b; }).catch(() => {});
-}
-function speak(keys, text, queue) {
-  if (muted || G.demo) return;
-  if (!AC || !keys.every(k => voiceBufs[k])) { say(text, queue); return; }
-  if (!queue) { for (const s of voiceSrcs) try { s.stop(); } catch (e) {} voiceSrcs = []; try { speechSynthesis.cancel(); } catch (e) {} }
-  fairyChime(.5);
-  let t = AC.currentTime + .18;
-  for (const k of keys) {
-    const s = AC.createBufferSource(), g = AC.createGain();
-    s.buffer = voiceBufs[k]; g.gain.value = 1.1;
-    s.connect(g).connect(AC.destination); s.start(t);
-    voiceSrcs.push(s); s.onended = () => { voiceSrcs = voiceSrcs.filter(x => x !== s); };
-    t += Math.max(.4, s.buffer.duration - .7);
-  }
-}
 function say(text, queue) {
   if (muted || G.demo || !("speechSynthesis" in window)) return;
   try {
     if (!queue) speechSynthesis.cancel();
-    fairyChime(text.length / 14);
     const u = new SpeechSynthesisUtterance(text);
-    u.lang = enVoice ? enVoice.lang : "en-GB"; if (enVoice) u.voice = enVoice; u.rate = .9; u.pitch = 1.75; u.volume = .95;
-    setTimeout(() => { try { speechSynthesis.speak(u); } catch (e) {} }, queue ? 0 : 160);
+    u.lang = enVoice ? enVoice.lang : "en-GB"; if (enVoice) u.voice = enVoice; u.rate = 1.0; u.pitch = 1.35; u.volume = .9;
+    speechSynthesis.speak(u);
   } catch (e) {}
 }
 
@@ -515,7 +471,6 @@ function useSuper(f) {
   const o = other(f);
   f.magic = 0; f.stats.magic++; f.castT = G.t;
   G.banner = { big: f.def.sname + "!", small: N(f.side) + "'s magic", col: f.def.spark, until: G.t + 1.3, mini: true };
-  speak(["sup-" + f.def.super], f.def.sname + "!");
   sfx.power();
   burst(f.x + f.face * .85, f.y + 1.95, RAINBOW, 24, 3, "star");
   switch (f.def.super) {
@@ -578,8 +533,6 @@ function score(s, victim) {
   if (final) { gameOver(s); return; }
   G.state = "cheer"; G.cheerT = 1.7;
   G.banner = { big: "Sparkled!", small: `A magic star for ${N(s)}`, col: SIDE[s].col, until: G.t + 1.6 };
-  const ci = Math.floor(Math.random() * 4);
-  speak(["c" + ci, "star-" + f.key], `${["Sparkle-tastic!", "Twinkle twinkle!", "Sparkly sparkle!", "Magical!"][ci]} A magic star for ${N(s)}!`);
 }
 
 function updBolts(dt) {
@@ -741,7 +694,7 @@ function timeUp() {
   if (G.score[0] !== G.score[1]) { gameOver(G.score[0] > G.score[1] ? 0 : 1); return; }
   G.golden = true; sfx.bell();
   G.banner = { big: "Golden star!", small: "The next sparkle wins", col: "#e0a100", until: G.t + 2.2 };
-  speak(["golden"], "A golden star! The next sparkle wins!");
+  say("Golden star! The next sparkle wins!");
 }
 function gameOver(w) {
   G.state = "over"; G.winner = w; G.overT = 0;
@@ -751,7 +704,7 @@ function gameOver(w) {
   G.banner = { big: `${N(w)} wins!`, small: "", col: SIDE[w].col, until: G.t + 2.2 };
   if (!G.demo) {
     sfx.fanfare();
-    speak(["win-" + f.key], `Hooray! ${N(w)} wins! What a magical duel!`);
+    say(`${N(w)} wins! Well done!`);
     setTimeout(() => {
       if (G.state !== "over" || G.demo) return;
       const two = settings.mode === "2p";
@@ -863,7 +816,7 @@ function step(dt) {
     for (const [at, txt] of COUNT) if (before < at && G.readyT >= at) {
       G.banner = { big: txt, small: at === 0 && G.golden ? "" : at === 0 ? `First to ${G.target} stars` : "", col: "#8a6cff", until: G.t + (at === 1.6 ? .9 : .8) };
       if (at < 1.6) sfx.tick(); else sfx.bell();
-      speak([at === 0 ? "ready" : at < 1.6 ? "set" : "go"], txt.replace("…", ""), at > 0);
+      say(txt.replace("…", ""), at > 0);
     }
     if (G.readyT >= 1.9) G.state = "play";
   } else if (G.state === "cheer") {
@@ -1431,7 +1384,7 @@ touchEl.addEventListener("pointercancel", tup);
 touchEl.addEventListener("lostpointercapture", tup);
 touchEl.addEventListener("contextmenu", e => e.preventDefault());
 
-window.__uni = { G, settings, UNI, voices: voiceBufs, startGame: d => startGame(d), step: dt => step(dt), useSuper: s => useSuper(G.P[s]), fire: (s, k) => fireSpark(G.P[s], k || "sparkle"), jump: s => doJump(G.P[s]), unicornAt };
+window.__uni = { G, settings, UNI, startGame: d => startGame(d), step: dt => step(dt), useSuper: s => useSuper(G.P[s]), fire: (s, k) => fireSpark(G.P[s], k || "sparkle"), jump: s => doJump(G.P[s]), unicornAt };
 
 // boot
 buildChars(); syncMenu(); syncMute(); resize();
